@@ -459,41 +459,70 @@ to travaille
   ask employeur [ set argent argent - a ]
   
   if ( ticks mod 30 ) = 0 [
-    set ctask "bilan"
-    
+    set ctask "bilan" 
   ]
-  
-  
 end
+
+
+
+
+to-report valeurBoeufs [ nb ]
+  report nb * 400
+end
+
+to-report valeurCacao[ nb ]
+  report nb * 500
+end  
+
+to-report valeurLotCacao[ nb ]
+  report nb * coutBase * 2
+end 
+
+to-report valeurLotPature[ nb ]
+  report nb * coutBase * 1.8
+end
+
+to-report valeurLotCultureAnnuelle[ nb ]
+  report nb * coutBase * 1.5
+end 
+
+to-report valeurLotJachere[ nb ]
+  report nb * coutBase * 1.3
+end 
+
+to-report valeurLotForet[ nb ]
+  report nb * coutBase * 1
+end 
+
 
 to vend [ typeV nb ]
   let s 0
   if ( typeV = "boeufs" )[
-    set s nb * 400
+    set s valeurBoeufs nb
     set argent argent + s 
   ] 
   if ( typeV = "cacao" )[
-    set s nb * 500
+    set s valeurCacao nb
     set argent argent + s 
   ]  
   if ( typeV = "LotCacao" )[
-    set s nb * coutBase * 5
+    set s valeurLotCacao nb
     set argent argent + s 
   ]  
   if ( typeV = "lotPature" )[
-    set s nb * coutBase * 4
+    set s valeurLotPature nb
     set argent argent + s 
   ]
   if ( typeV = "LotCultureAnnuelle" )[
-    set s nb * coutBase * 3
+    set s valeurLotCultureAnnuelle nb
     set argent argent + s 
   ]  
   if ( typeV = "LotJachere" )[
-    set s nb * coutBase * 2
+    set s valeurLotJachere nb
     set argent argent + s 
   ]  
   if ( typeV = "LotForet" )[
-    set s nb * coutBase * 1
+    set s valeurLotForet nb
     set argent argent + s 
   ]  
 end
@@ -501,36 +530,172 @@ end
 to achete [ typeV nb ]
   let s 0
   if ( typeV = "boeufs" )[
-    set s nb * 300
+    set s valeurBoeufs nb
     set argent argent - s 
   ] 
   if ( typeV = "cacao" )[
-    set s nb * 500
+    set s valeurCacao nb
     set argent argent - s 
   ]  
   if ( typeV = "LotCacao" )[
-    set s nb * coutBase * 2
+    set s valeurLotCacao nb
     set argent argent - s 
   ]  
   if ( typeV = "lotPature" )[
-    set s nb * coutBase * 1.8
-    set argent argent - s 
-  ]
+      set s valeurLotPature nb
+      set argent argent - s 
+    ]
+  
   if ( typeV = "LotCultureAnnuelle" )[
-    set s nb * coutBase * 1.5
+    set s valeurLotCultureAnnuelle nb
     set argent argent - s 
   ]  
   if ( typeV = "LotJachere" )[
-    set s nb * coutBase * 2
+    set s valeurLotJachere nb
     set argent argent - s 
   ]  
   if ( typeV = "LotForet" )[
-    set s nb * coutBase * 1.3
+    set s valeurLotForet nb
     set argent argent - s 
   ]  
 
   
 end
+
+
+to strategieSansTerre 
+
+   let a random 3
+   if ( argent > 2000 )and( (argent - 2000) > 500 )[
+     ifelse ( a = 0 )[
+       set ctask "chercheBoulot"
+     ]
+     [
+       set lots 1 
+       let l one-of patches with [ proprieté = 0 ]
+       move-to l 
+       set shape "house"
+       set liste-lots (list l)  
+       ask l [ set proprieté 1]
+       set nbrEmployé 0
+       set embauche? 0
+       
+       if ( a = 1) [
+         set strategie "eleveur"                     
+         set color yellow
+         set ctask "go-eleveur"
+         achete "lotPature" 1
+       ]
+       
+       if ( a = 2 )
+       [
+         set strategie "planteur"
+         set color blue
+         set ctask "go-planteur" 
+         achete "LotCacao" 1     
+       ] 
+     ]  
+   ]
+end
+
+
+to strategieEleveur 
+  let a random 3
+  ifelse ( argent < 2000) [
+     ifelse (nb-boeufs <= 0) [
+       vend "lotPature" 1
+       set strategie "sans-terre" 
+       set lots 0
+       set shape "person"
+       set color white
+       set ctask "go-sans-terre"
+       set employeur ""
+       set size 0.6  
+       
+       set liste-lots ""          
+       set nbrEmployé 0
+       set embauche? 0         
+     ]
+     [
+       ifelse (nb-boeufs > 2) [
+         vend "boeufs" 2
+         set ctask "go-eleveur"
+       ]
+       [
+         set ctask "go-eleveur"
+       ]
+     ]
+  ]
+  [
+    if argent > 4000[
+      if a = 3[
+        
+        set strategie "planteur"
+        set lots 1
+        set argent argentBasePlanteur
+        set shape "house"
+        set color blue
+        set ctask "go-planteur"
+        
+        set nbrEmployé 0
+        set embauche? 0
+        set size 0.9           
+      ] 
+    ]
+  ]
+  
+end
+
+to strategiePlanteur 
+  let a random 3
+  
+  ifelse ( argent > 2000) and ( argent < 3000)  [
+    if a = 1[
+      vend "lotCacao" lots
+      set strategie "eleveur"
+      
+      set lots 0
+      set shape "person"
+      set color white
+      set ctask "go-eleveur"
+      set employeur ""
+      set size 0.6  
+              
+      set nbrEmployé 0
+      set embauche? 0         
+    ]
+  ]
+  [
+    ifelse ( argent > 4000) and ( a = 2 )[
+      achete "LotCacao" 1
+      set ctask "go-planteur"
+    ]
+    [
+      ifelse argent < 2000 [
+        vend "lotCacao" 1
+        set strategie "sans-terre" 
+        set lots 0
+        set shape "person"
+        set color white
+        set ctask "go-sans-terre"
+        set employeur ""
+        set size 0.6  
+        
+        set liste-lots ""          
+        set nbrEmployé 0
+        set embauche? 0         
+        
+      ]
+      [
+        set ctask "go-planteur" 
+      ]
+     
+    ]    
+    
+  ]
+  
+end
+
 
 to bilan
     
@@ -539,92 +704,19 @@ to bilan
     if argent < 0[
        die
     ]
+    
     ifelse strategie = "sans-terre"[
-     
-      if ( argent > 2000 )and( (argent - 2000) > 500 )[
-        let a random 3
-        ifelse ( a = 0 )[
-          set ctask "chercheBoulot"
-        ]
-        [
-          
-          set lots 1 
-          let l one-of patches with [ proprieté = 0 ]
-          move-to l 
-          set shape "house"
-          set liste-lots (list l)  
-          ask l [ set proprieté 1]
-          set nbrEmployé 0
-          set embauche? 0
- 
-          if ( a = 1) [
-            set strategie "eleveur"                     
-            set color yellow
-            set ctask "go-eleveur"
-            set argent argent - 2000
-          ]
-          
-          if ( a = 2 )
-          [
-            set strategie "planteur"
-            set color blue
-            set ctask "go-planteur" 
-            set argent argent - 2000          
-          ] 
-        ]  
-      ] 
-    ]
+       strategieSansTerre 
+    ]  
     
-    
-    [
+    [  
+      ifelse strategie = "eleveur" [
+        strategieEleveur               
+      ]
       
-     ifelse strategie = "eleveur" [
-       let a random 3
-       if ( argent < 2000) and (nb-boeufs <= 0) [
-         vend "lotPature" lots
-         set strategie "sans-terre" 
-         set lots 0
-         set shape "person"
-         set color white
-         set ctask "go-sans-terre"
-         set employeur ""
-         set size 0.6  
-         
-         set liste-lots ""          
-         set nbrEmployé 0
-         set embauche? 0         
-       ]
-       if ( argent < 2000) and (nb-boeufs <= 0) [
-       ]
-        
-             
-     ]
-     
-     
-
-
-
-     [
-       
-       if ( argent < 3000)  [
-         vend "lotCacao" lots
-         set strategie "eleveur"
-          
-         set lots 0
-         set shape "person"
-         set color white
-         set ctask "go-sans-terre"
-         set employeur ""
-         set size 0.6  
-         
-         set liste-lots ""          
-         set nbrEmployé 0
-         set embauche? 0         
-       ]
-       if ( argent < 2000) and (nb-boeufs <= 0) [
-       ]
-       
-     ]
+      [
+        strategiePlanteur
+      ]
       
       
     ]
@@ -981,7 +1073,7 @@ argentBaseSansTerre
 argentBaseSansTerre
 0
 20000
-2055
+2080
 1
 1
 NIL
