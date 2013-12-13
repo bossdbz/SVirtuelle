@@ -67,11 +67,11 @@ to setup
     
      ifelse (pycor > 0 and pycor <= 3 ) or (pycor < 0 and pycor >= -3 ) 
     [
-      set coutBase 4000
+      set coutBase cout-proche-amazone
     ]
     [
 
-      set coutBase 2000
+      set coutBase cout-base 
     ]
 ;    let i 0
 ;    while [ i < 10 ]
@@ -138,7 +138,7 @@ to setup
     if strat = 0 [ 
       set strategie "planteur"
       set lots 1
-      set argent 9000
+      set argent argentBasePlanteur
       set shape "house"
       set color blue
       set ctask "go-planteur"
@@ -152,7 +152,7 @@ to setup
     if strat = 1 [ 
       set strategie "eleveur" 
       set lots 1
-      set argent 3000
+      set argent argentBaseEleveur
       set shape "house"
       set color yellow
       set ctask "go-eleveur"
@@ -167,7 +167,7 @@ to setup
     if strat = 2 [
        set strategie "sans-terre" 
        set lots 0
-       set argent 1000
+       set argent argentBaseSansTerre
        set shape "person"
        set color white
        set ctask "go-sans-terre"
@@ -301,7 +301,7 @@ to entretenir
   
   ifelse ( ticks mod 30 ) = 0 
   [
-    ;set ctask "bilan"
+    set ctask "bilan"
   ]
   [
    ;;regarde s'il peut embaucher
@@ -337,7 +337,7 @@ end
 to embauche
    ;;embauche
     let r random 3;; 33% de chance en plus d'avoir assez d'argent
-    if r = 0 and argent > 5000 and nbrEmployé = 0;; si on a pas d'employé et qu'on as assez d'argent et de la chance, on embauche
+    if r = 0 and argent > PrixSeuilEmbauche and nbrEmployé = 0;; si on a pas d'employé et qu'on as assez d'argent et de la chance, on embauche
     [ set embauche? 1 ]    
     
     if nbrEmployé != 0 [ set embauche? 0]
@@ -373,9 +373,9 @@ to travail-pature
     
     set dureeAbandon 0
     ;;recolte l'argent et paye
-    let recoltes random-normal (nb-adultes * 2) nb-adultes / 2    
+    let recoltes random-normal (nb-adultes * 5) nb-adultes / 2    
     let entretient  random-normal (nb-adultes * 2) nb-adultes / 2 
-    let entretientBoeufs random-normal (nb-boeufs * 100) (nb-boeufs * 30)
+    let entretientBoeufs random-normal (nb-boeufs) (nb-boeufs / 2)
     set argent argent + recoltes - entretient - entretientBoeufs
    ]
   
@@ -454,8 +454,8 @@ end
 
 to travaille 
   ;let emp min familles with
-  let a random nb-adultes + nb-adultes  
-  set argent argent + a
+  let a random-normal (nb-adultes * 2 )  (nb-adultes / 2) 
+  set argent argent + a + random 10
   ask employeur [ set argent argent - a ]
   
   if ( ticks mod 30 ) = 0 [
@@ -469,7 +469,7 @@ end
 to vend [ typeV nb ]
   let s 0
   if ( typeV = "boeufs" )[
-    set s nb * 300
+    set s nb * 400
     set argent argent + s 
   ] 
   if ( typeV = "cacao" )[
@@ -509,15 +509,15 @@ to achete [ typeV nb ]
     set argent argent - s 
   ]  
   if ( typeV = "LotCacao" )[
-    set s nb * coutBase * 5
+    set s nb * coutBase * 2
     set argent argent - s 
   ]  
   if ( typeV = "lotPature" )[
-    set s nb * coutBase * 4
+    set s nb * coutBase * 1.8
     set argent argent - s 
   ]
   if ( typeV = "LotCultureAnnuelle" )[
-    set s nb * coutBase * 3
+    set s nb * coutBase * 1.5
     set argent argent - s 
   ]  
   if ( typeV = "LotJachere" )[
@@ -525,7 +525,7 @@ to achete [ typeV nb ]
     set argent argent - s 
   ]  
   if ( typeV = "LotForet" )[
-    set s nb * coutBase * 1
+    set s nb * coutBase * 1.3
     set argent argent - s 
   ]  
 
@@ -536,9 +536,12 @@ to bilan
     
     let nourriture ( nb-adultes * ( random-normal 10 2 ) ) + ( nb-jeunes * ( random-normal 5 2 ) )
     set argent argent - nourriture
-    
+    if argent < 0[
+       die
+    ]
     ifelse strategie = "sans-terre"[
-      if ( argent > 2000 )[
+     
+      if ( argent > 2000 )and( (argent - 2000) > 500 )[
         let a random 3
         ifelse ( a = 0 )[
           set ctask "chercheBoulot"
@@ -578,8 +581,23 @@ to bilan
      ifelse strategie = "eleveur" [
        let a random 3
        if ( argent < 2000) and (nb-boeufs <= 0) [
-           
-       ]      
+         vend "lotPature" lots
+         set strategie "sans-terre" 
+         set lots 0
+         set shape "person"
+         set color white
+         set ctask "go-sans-terre"
+         set employeur ""
+         set size 0.6  
+         
+         set liste-lots ""          
+         set nbrEmployé 0
+         set embauche? 0         
+       ]
+       if ( argent < 2000) and (nb-boeufs <= 0) [
+       ]
+        
+             
      ]
      
      
@@ -588,7 +606,23 @@ to bilan
 
      [
        
-       
+       if ( argent < 3000)  [
+         vend "lotCacao" lots
+         set strategie "eleveur"
+          
+         set lots 0
+         set shape "person"
+         set color white
+         set ctask "go-sans-terre"
+         set employeur ""
+         set size 0.6  
+         
+         set liste-lots ""          
+         set nbrEmployé 0
+         set embauche? 0         
+       ]
+       if ( argent < 2000) and (nb-boeufs <= 0) [
+       ]
        
      ]
       
@@ -732,10 +766,10 @@ ticks
 30.0
 
 SLIDER
-16
-86
-188
-119
+13
+23
+185
+56
 numberFamilles
 numberFamilles
 0
@@ -747,10 +781,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-18
-154
-81
-187
+39
+446
+102
+479
 NIL
 setup
 NIL
@@ -764,10 +798,10 @@ NIL
 1
 
 BUTTON
-14
-207
-77
-240
+35
+499
+98
+532
 NIL
 go\n
 T
@@ -779,21 +813,6 @@ NIL
 NIL
 NIL
 1
-
-SLIDER
-13
-35
-185
-68
-numberTroupeau
-numberTroupeau
-0
-100
-51
-1
-1
-NIL
-HORIZONTAL
 
 TEXTBOX
 1272
@@ -816,17 +835,17 @@ TEXTBOX
 1
 
 PLOT
-1114
-529
-1560
-748
+1076
+527
+1522
+746
 population
 temps
 nombre
 0.0
 0.0
 0.0
-2000.0
+0.0
 true
 true
 "" ""
@@ -877,6 +896,96 @@ PENS
 "jachere" 1.0 0 -955883 true "" "plot count patches with [ couverture-vegetale = \"jachere\"]"
 "cacao" 1.0 0 -8431303 true "" "plot count patches with [ couverture-vegetale = \"cacao\"]"
 "troupeaux" 1.0 0 -2674135 true "" ""
+
+SLIDER
+20
+84
+192
+117
+cout-base
+cout-base
+0
+5000
+2000
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+20
+144
+192
+177
+cout-proche-amazone
+cout-proche-amazone
+0
+5000
+4000
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+31
+191
+203
+224
+PrixseuilEmbauche
+PrixseuilEmbauche
+0
+10000
+2611
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+28
+258
+200
+291
+argentBasePlanteur
+argentBasePlanteur
+0
+20000
+6025
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+22
+318
+194
+351
+argentBaseEleveur
+argentBaseEleveur
+0
+20000
+4841
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+24
+384
+196
+417
+argentBaseSansTerre
+argentBaseSansTerre
+0
+20000
+2055
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
