@@ -1,5 +1,6 @@
 breed [familles famille]
 breed [troupeaux troupeau]
+globals[ eleveurAplanteur planteurAeleveur sansTerreAeleveur sansTerreAplanteur eleveurAsansTerre planteurAsansterre]
 
 
 familles-own [strategie lots liste-lots argent nb-jeunes nb-adultes embauche?  nbrEmployé estEmployé  employeur ctask  ]
@@ -16,6 +17,17 @@ to setup
   resize-world -38 38 -18 18
   ;set-patch-size 5
   reset-ticks
+  
+  ;connaitre les différents changements
+  set eleveurAplanteur 0
+  set planteurAeleveur 0
+  set sansTerreAeleveur 0
+  set sansTerreAplanteur 0
+  set eleveurAsansTerre 0
+  set planteurAsansterre 0 
+  
+  
+  
   ask patches [ 
     
 
@@ -310,7 +322,7 @@ to entretenir
     ;;entretient 
     if couverture-vegetale = "foret" or couverture-vegetale = "jachere"
     [ brulis patch-here ]
-   ; show patch-here
+   
    
     if( couverture-vegetale = "culture-annuelle" and strategie = "planteur") or
       ( couverture-vegetale = "cacao" and strategie = "planteur")
@@ -327,8 +339,21 @@ to entretenir
        travail-pature
       ]
     
+     if( couverture-vegetale = "pature" and strategie = "planteur")
+     [
+      ;;travaille le cacao
+      setCacao
+      travail-cacao
+      
+      ]
     
-   
+     if( couverture-vegetale = "cacao" and strategie = "eleveur")
+     [
+      ;;travaille le cacao
+      setPature
+      travail-pature
+      
+      ]
     
   ]
   
@@ -350,12 +375,17 @@ to travail-cacao
   
   [
     set dureeAbandon 0
+    
+    let recoltes 0
+    let entretient  random-normal (nb-adultes * 5) nb-adultes + random 25 
+    
   if age >= 3 [
-    ;;recolte l'argent et paye
-    let recoltes random-normal (nb-adultes * 3) nb-adultes / 3    
-    let entretient  random-normal (nb-adultes * 3) nb-adultes / 3 
-    set argent argent + recoltes + entretient
+    ;;les recoltes n'ont lieu que si le cacao a plus de 3 ans
+    set recoltes random-normal (nb-adultes * 10) nb-adultes + random 50      
+    
       ]
+  
+  set argent argent + recoltes - entretient
   ]
    
   
@@ -373,7 +403,7 @@ to travail-pature
     
     set dureeAbandon 0
     ;;recolte l'argent et paye
-    let recoltes random-normal (nb-adultes * 5) nb-adultes / 2    
+    let recoltes random-normal (nb-adultes * 2) nb-adultes / 2    
     let entretient  random-normal (nb-adultes * 2) nb-adultes / 2 
     let entretientBoeufs random-normal (nb-boeufs) (nb-boeufs / 2)
     set argent argent + recoltes - entretient - entretientBoeufs
@@ -384,10 +414,10 @@ end
 
 to achatBoeufs
    ;achete une bete si assez d'argent
-  ifelse ( (nb-boeufs = 0) and (argent > 3000)) [ 
+  ifelse ( (nb-boeufs = 0) and (argent > 2500)) [ 
     ;;achete un pack de 5 boeufs
       set nb-boeufs 5
-      set argent argent - 1000
+      set argent argent - 500
     ]
    
  [
@@ -397,7 +427,7 @@ to achatBoeufs
      if( r = 0 ) [ ;
        ;si on a de l'argent et de la chance 20% 
        ;on achete un boeuf
-       set argent argent - 200
+       set argent argent - 100
        set nb-boeufs nb-boeufs + 1
        
         ]
@@ -407,17 +437,12 @@ to achatBoeufs
  
   
 end  
+
 to brulis [ p ];découpe
   ask p [ setcultureAnnuelle ]
  
-  
 end
 
-
-to wiggle
-  rt random 50
-  lt random 50
-end
 
 to go-planteur
  set ctask "entretenir"  
@@ -455,7 +480,7 @@ end
 to travaille 
   ;let emp min familles with
   let a random-normal (nb-adultes * 2 )  (nb-adultes / 2) 
-  set argent argent + a + random 10
+  set argent argent + a + random 6
   ask employeur [ set argent argent - a ]
   
   if ( ticks mod 30 ) = 0 [
@@ -467,7 +492,7 @@ end
 
 
 to-report valeurBoeufs [ nb ]
-  report nb * 400
+  report nb * 150
 end
 
 to-report valeurCacao[ nb ]
@@ -475,23 +500,23 @@ to-report valeurCacao[ nb ]
 end  
 
 to-report valeurLotCacao[ nb ]
-  report nb * coutBase * 2
+  report nb * coutBase * 1.2
 end 
 
 to-report valeurLotPature[ nb ]
-  report nb * coutBase * 1.8
+  report nb * coutBase * 1
 end
 
 to-report valeurLotCultureAnnuelle[ nb ]
-  report nb * coutBase * 1.5
+  report nb * coutBase * 0.8
 end 
 
 to-report valeurLotJachere[ nb ]
-  report nb * coutBase * 1.3
+  report nb * coutBase * 0.7
 end 
 
 to-report valeurLotForet[ nb ]
-  report nb * coutBase * 1
+  report nb * coutBase * 0.6
 end 
 
 
@@ -562,6 +587,21 @@ to achete [ typeV nb ]
   
 end
 
+to acheteSol
+  if couverture-vegetale = "culture-perenne" and argent > ( coutBase * 1 - 1000 )
+  [ achete "LotCultureAnnuelle" 1 ]
+  if couverture-vegetale = "foret" and argent > ( valeurLotForet 1 - 1000 )
+  [ achete "LotForet" 1 ]
+  if couverture-vegetale = "culture-annuelle" and argent > ( valeurLotCultureAnnuelle 1 - 1000 )
+  [ achete "LotCultureAnnuelle" 1 ]
+  if couverture-vegetale = "jachere" and argent > ( valeurLotJachere 1 - 1000 )
+  [ achete "LotJachere" 1 ]
+  if couverture-vegetale = "cacao" and argent > ( valeurLotCacao 1 - 1000 )
+  [ achete "LotCacao" 1 ]
+  if couverture-vegetale = "pature" and argent > ( valeurLotPature 1 - 1000 )
+  [ achete "lotPature" 1 ]
+  
+end
 
 to strategieSansTerre 
 
@@ -584,7 +624,9 @@ to strategieSansTerre
          set strategie "eleveur"                     
          set color yellow
          set ctask "go-eleveur"
-         achete "lotPature" 1
+         
+         acheteSol
+         set sansTerreAeleveur sansTerreAeleveur + 1
        ]
        
        if ( a = 2 )
@@ -592,7 +634,8 @@ to strategieSansTerre
          set strategie "planteur"
          set color blue
          set ctask "go-planteur" 
-         achete "LotCacao" 1     
+         acheteSol
+         set sansTerreAplanteur sansTerreAplanteur + 1     
        ] 
      ]  
    ]
@@ -600,7 +643,7 @@ end
 
 
 to strategieEleveur 
-  let a random 3
+  let a random 5
   ifelse ( argent < 2000) [
      ifelse (nb-boeufs <= 0) [
        vend "lotPature" 1
@@ -614,22 +657,22 @@ to strategieEleveur
        
        set liste-lots ""          
        set nbrEmployé 0
-       set embauche? 0         
+       set embauche? 0    
+       
+       set eleveurAsansTerre eleveurAsansTerre + 1     
      ]
      [
-       ifelse (nb-boeufs > 2) [
-         vend "boeufs" 2
+      
+         vend "boeufs" nb-boeufs
          set ctask "go-eleveur"
        ]
-       [
-         set ctask "go-eleveur"
-       ]
+       
      ]
-  ]
+  
   [
-    if argent > 4000[
-      if a = 3[
-        
+    if argent > 6000[
+      if a = 2[
+        vend "boeufs" nb-boeufs
         set strategie "planteur"
         set lots 1
         set argent argentBasePlanteur
@@ -639,7 +682,10 @@ to strategieEleveur
         
         set nbrEmployé 0
         set embauche? 0
-        set size 0.9           
+        set size 0.9 
+        
+        ;;passage en planteur
+        set eleveurAplanteur eleveurAplanteur + 1          
       ] 
     ]
   ]
@@ -647,30 +693,28 @@ to strategieEleveur
 end
 
 to strategiePlanteur 
-  let a random 3
+  let a random 4
   
-  ifelse ( argent > 2000) and ( argent < 3000)  [
+  ifelse ( argent > 2000) and ( argent < 3500)  [
     if a = 1[
       vend "lotCacao" lots
       set strategie "eleveur"
       
       set lots 0
-      set shape "person"
-      set color white
+      set shape "house"
+      set color yellow
       set ctask "go-eleveur"
       set employeur ""
       set size 0.6  
               
       set nbrEmployé 0
-      set embauche? 0         
+      set embauche? 0  
+      
+      set planteurAeleveur planteurAeleveur + 1       
     ]
   ]
   [
-    ifelse ( argent > 4000) and ( a = 2 )[
-      achete "LotCacao" 1
-      set ctask "go-planteur"
-    ]
-    [
+    
       ifelse argent < 2000 [
         vend "lotCacao" 1
         set strategie "sans-terre" 
@@ -683,7 +727,9 @@ to strategiePlanteur
         
         set liste-lots ""          
         set nbrEmployé 0
-        set embauche? 0         
+        set embauche? 0 
+        
+        set planteurAsansterre planteurAsansterre + 1      
         
       ]
       [
@@ -692,15 +738,27 @@ to strategiePlanteur
      
     ]    
     
-  ]
+  
   
 end
 
+to facteur-malchance
+   set argent argent - random (nb-adultes * malchance + (argent / 20 ))
+   
+   ;si on est panteur et ben on paiera plus
+   if(strategie = "planteur") [ 
+     set argent argent - random (nb-adultes * malchance + (argent / 10 ))
+      ] 
+end
 
 to bilan
     
     let nourriture ( nb-adultes * ( random-normal 10 2 ) ) + ( nb-jeunes * ( random-normal 5 2 ) )
     set argent argent - nourriture
+    
+    ; facteur malchance
+    if(strategie = "eleveur") or (strategie = "planteur") [facteur-malchance];
+    
     if argent < 0[
        die
     ]
@@ -721,6 +779,7 @@ to bilan
       
     ]
     
+   
 end
 
 to go
@@ -730,105 +789,6 @@ to go
   tick
 end
 
-
-
-
-
-
-
-
-
-; 
-;  reset-ticks
-;end
-
-;to grass-grow
-;  ask patches [
-;    ifelse counter = 0 [
-;      set pcolor scale-color green height-grass 0 60
-;      set height-grass height-grass + 1
-;      set age age - 1
-;      set counter time-to-grow
-;    ]
-;    [ set counter counter - 1 ]
-;    if age = 0 [
-;      set pcolor black
-;      set counter random time-to-grow
-;      set height-grass random 50
-;      set age 2
-;    ]
-;  ]
-;end
-
-
-
-
-;to  
-
-;to regrouper
-;  let target one-of other beefs in-radius distanceMin
-;  ifelse target = nobody [
-;   set target one-of other beefs in-radius 10
-;    if target != nobody [
-;      set heading towards target
-;    ]
-;  ]
-;  [
-;    set heading towards target rt 180 fd 2
-;  ]
-;  if energy < energyMin [
-;    set ctask "quete-nourriture"
-;  ]
-;  go-beef
-;end
-
-;to eat-grass
-;   set height-grass height-grass - consomation
-;   set energy energy + consomation
-;end
-
-;to quete-nourriture
-;  ifelse pcolor = green and height-grass >= consomation [
-;    eat-grass
-;    set ctask "regrouper"
-;  ]
-;  [go-beef]
-;endbreed [familles famille]
-
-
-
-
-;to  
-
-;to regrouper
-;  let target one-of other beefs in-radius distanceMin
-;  ifelse target = nobody [
-;   set target one-of other beefs in-radius 10
-;    if target != nobody [
-;      set heading towards target
-;    ]
-;  ]
-;  [
-;    set heading towards target rt 180 fd 2
-;  ]
-;  if energy < energyMin [
-;    set ctask "quete-nourriture"
-;  ]
-;  go-beef
-;end
-
-;to eat-grass
-;   set height-grass height-grass - consomation
-;   set energy energy + consomation
-;end
-
-;to quete-nourriture
-;  ifelse pcolor = green and height-grass >= consomation [
-;    eat-grass
-;    set ctask "regrouper"
-;  ]
-;  [go-beef]
-;end
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
@@ -865,8 +825,8 @@ SLIDER
 numberFamilles
 numberFamilles
 0
-2000
-475
+5000
+1783
 1
 1
 NIL
@@ -907,9 +867,9 @@ NIL
 1
 
 TEXTBOX
-1272
+1237
 90
-1422
+1387
 108
 NIL
 11
@@ -917,9 +877,9 @@ NIL
 1
 
 TEXTBOX
-1283
+1248
 15
-1433
+1398
 132
       LEGENDE\nvert foncé - culture perenne\nvert normal - foret\nvert clair - patures\nrouge - transamazonie\njaune - culture annuelle\norange - jachere\ntriangle noir,rouge - troupeaux\ncarré blanc - lot\n
 10
@@ -927,10 +887,10 @@ TEXTBOX
 1
 
 PLOT
-1076
-527
-1522
-746
+1109
+537
+1555
+756
 population
 temps
 nombre
@@ -947,10 +907,10 @@ PENS
 "sans-terre" 1.0 0 -2674135 true "" "plot count familles with [ strategie = \"sans-terre\"]"
 
 PLOT
-158
-530
-591
-750
+224
+535
+657
+755
 Argent moyen
 temps
 argent
@@ -967,10 +927,10 @@ PENS
 "sans-terre" 1.0 0 -5298144 true "" "plot (sum [argent] of familles with [ strategie = \"sans-terre\" ] + 1 ) / ( count familles  with [ strategie = \"sans-terre\"] + 1  )"
 
 PLOT
-608
-529
-1061
-751
+655
+536
+1108
+758
 Repartition surface
 NIL
 NIL
@@ -987,7 +947,6 @@ PENS
 "culture-perrenne" 1.0 0 -1184463 true "" "plot count patches with [ couverture-vegetale = \"culture-perenne\"]"
 "jachere" 1.0 0 -955883 true "" "plot count patches with [ couverture-vegetale = \"jachere\"]"
 "cacao" 1.0 0 -8431303 true "" "plot count patches with [ couverture-vegetale = \"cacao\"]"
-"troupeaux" 1.0 0 -2674135 true "" ""
 
 SLIDER
 20
@@ -1013,7 +972,7 @@ cout-proche-amazone
 cout-proche-amazone
 0
 5000
-4000
+4029
 1
 1
 NIL
@@ -1028,7 +987,7 @@ PrixseuilEmbauche
 PrixseuilEmbauche
 0
 10000
-2611
+2633
 1
 1
 NIL
@@ -1043,7 +1002,7 @@ argentBasePlanteur
 argentBasePlanteur
 0
 20000
-6025
+3594
 1
 1
 NIL
@@ -1058,7 +1017,7 @@ argentBaseEleveur
 argentBaseEleveur
 0
 20000
-4841
+3200
 1
 1
 NIL
@@ -1073,11 +1032,96 @@ argentBaseSansTerre
 argentBaseSansTerre
 0
 20000
-2080
+2319
 1
 1
 NIL
 HORIZONTAL
+
+PLOT
+1356
+381
+1556
+531
+population totale
+temps
+nombre
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+" familles" 1.0 0 -16777216 true "" "plot count turtles"
+
+SLIDER
+4
+563
+114
+596
+malchance
+malchance
+0
+100
+50
+1
+1
+NIL
+HORIZONTAL
+
+PLOT
+1237
+169
+1572
+360
+Changements de stratégie
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"eleveur -> planteur" 1.0 0 -16777216 true "" "plot eleveurAplanteur"
+"planteur -> eleveur" 1.0 0 -7500403 true "" "plot  planteurAeleveur"
+"sans-terre -> eleveur" 1.0 0 -2674135 true "" "plot  sansTerreAeleveur"
+"sans-terre -> planteur" 1.0 0 -15040220 true "" "plot  sansTerreAplanteur"
+"eleveur -> sans-terre" 1.0 0 -6459832 true "" "plot  eleveurAsansTerre"
+"planteur -> sans-terre" 1.0 0 -14454117 true "" "plot  planteurAsansterre"
+
+PLOT
+6
+622
+206
+772
+Deforestation
+temps
+%
+0.0
+0.0
+0.0
+100.0
+true
+true
+"" ""
+PENS
+"def" 1.0 0 -8053223 true "" "plot (100 - ((( count patches with [ couverture-vegetale = \"foret\"]) / ( count patches )) * 100 ))"
+
+MONITOR
+1394
+32
+1579
+113
+annéé en cours :
+ticks / 30
+1
+1
+20
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -1422,7 +1466,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.0.4
+NetLogo 5.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
