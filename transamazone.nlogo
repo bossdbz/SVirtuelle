@@ -85,34 +85,6 @@ to setup
 
       set coutBase cout-base 
     ]
-;    let i 0
-;    while [ i < 10 ]
-;    [
-;      let x random pxcor 
-;      let y random pycor
-;      let cv patch-at x y  
-;      ;if patch-at x y xcouverture-vegetale = "pature"
-;      ;[
-;        set i i + 1
-;         
-;      ;] 
-;    ]
-
- 
-    
-;    let i 0
-;    while [ i < 10 ]
-;    [
-;      let x random pxcor 
-;      let y random pycor
-;      let cv patch-at x y  
-;      if patch-at x y couverture-vegetale = "pature"
-;      [
-;        set i i + 1
-;         
-;      ] 
-;    ]
-
     
      
      
@@ -124,7 +96,7 @@ to setup
   
     
  
-  
+  ;creation des 3 types de familles différentes
   create-familles numberFamilles [
     
    
@@ -146,7 +118,7 @@ to setup
     setxy x y
     let lieu patch x y
     
-    
+    ;le planteur
     if strat = 0 [ 
       set strategie "planteur"
       set lots 1
@@ -161,6 +133,8 @@ to setup
       set embauche? 0
        set size 0.9
       ]
+    
+    ;l'eleveur
     if strat = 1 [ 
       set strategie "eleveur" 
       set lots 1
@@ -176,6 +150,7 @@ to setup
       set size 0.9
       ]
     
+    ;le sans-terre
     if strat = 2 [
        set strategie "sans-terre" 
        set lots 0
@@ -197,12 +172,7 @@ to setup
     
   ]
   
- create-troupeaux 0 [
-  set shape "triangle 2"
-  set size 1
-  set color red
- ]
-   
+
    
   reset-ticks
   
@@ -213,7 +183,7 @@ to setup
   
 end
 
-
+;initialisation des sols
 
 to setForet
   set couverture-vegetale "foret" 
@@ -272,9 +242,9 @@ to setCacao
 end
 
 
-
+; l'evolution de la couverture au cours du temps
 to evolution
-   set age ticks / 30
+   set age ticks / 30  ; 1 an = 30 ticks
    if (ticks mod 30) = 0
    [
      set dureeAbandon dureeAbandon + 1   
@@ -308,7 +278,7 @@ to evolution
    
 end  
   
-  
+;etat entretenir,  entretient du sol , des plantation ou des paturages
 to entretenir 
   
   ifelse ( ticks mod 30 ) = 0 
@@ -359,6 +329,7 @@ to entretenir
   
 end
 
+;embauche de main d'oeuvre
 to embauche
    ;;embauche
     let r random 3;; 33% de chance en plus d'avoir assez d'argent
@@ -369,6 +340,7 @@ to embauche
   
 end
 
+;tracail le cacao
 to travail-cacao
   ifelse couverture-vegetale != "cacao"
   [ setCacao]
@@ -391,6 +363,8 @@ to travail-cacao
   
 end
 
+
+;travail les pature
 to travail-pature
   
    ifelse couverture-vegetale != "pature"
@@ -412,6 +386,8 @@ to travail-pature
   
 end
 
+
+;achete des boeufs
 to achatBoeufs
    ;achete une bete si assez d'argent
   ifelse ( (nb-boeufs = 0) and (argent > 2500)) [ 
@@ -438,12 +414,14 @@ to achatBoeufs
   
 end  
 
+
+;deforeste la couverture (brule)
 to brulis [ p ];découpe
   ask p [ setcultureAnnuelle ]
  
 end
 
-
+;;;;;;   Les etats initiaux ;;;;;;;;;;;;;;;;;;
 to go-planteur
  set ctask "entretenir"  
 end
@@ -458,6 +436,10 @@ to go-sans-terre
  
 end
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;les sans-terre recherchent un employeur
 to chercheBoulot
   if ( ticks mod 30 ) = 0 
   [
@@ -477,6 +459,8 @@ to chercheBoulot
 end
 
 
+;ils ont trouvé un boulot, il partent travailler
+
 to travaille 
   ;let emp min familles with
   let a random-normal (nb-adultes * 2 )  (nb-adultes / 2) 
@@ -490,7 +474,7 @@ end
 
 
 
-
+;calcul toutes les valeures et couts 
 to-report valeurBoeufs [ nb ]
   report nb * 150
 end
@@ -519,7 +503,7 @@ to-report valeurLotForet[ nb ]
   report nb * coutBase * 0.6
 end 
 
-
+; effectue les opérations de ventes
 to vend [ typeV nb ]
   let s 0
   if ( typeV = "boeufs" )[
@@ -552,6 +536,9 @@ to vend [ typeV nb ]
   ]  
 end
 
+
+
+; effectue les opérations d'acahats
 to achete [ typeV nb ]
   let s 0
   if ( typeV = "boeufs" )[
@@ -587,6 +574,7 @@ to achete [ typeV nb ]
   
 end
 
+;précise la methodes d'achats en fonction des différentes couverture végétales
 to acheteSol
   if couverture-vegetale = "culture-perenne" and argent > ( coutBase * 1 - 1000 )
   [ achete "LotCultureAnnuelle" 1 ]
@@ -603,10 +591,15 @@ to acheteSol
   
 end
 
+
+
+;;;---------------Définis toutes les stratégies des familles---------------------
+
+;;;Celles des sans-terre
 to strategieSansTerre 
 
    let a random 3
-   if ( argent > 2000 )and( (argent - 2000) > 500 )[
+   ifelse ( argent > 2500 )[
      ifelse ( a = 0 )[
        set ctask "chercheBoulot"
      ]
@@ -639,9 +632,10 @@ to strategieSansTerre
        ] 
      ]  
    ]
+   [ set ctask "chercheBoulot" ]
 end
 
-
+;;Celle des éleveurs
 to strategieEleveur 
   let a random 5
   ifelse ( argent < 2000) [
@@ -691,7 +685,7 @@ to strategieEleveur
   ]
   
 end
-
+;Celle des planteurs
 to strategiePlanteur 
   let a random 4
   
@@ -737,10 +731,14 @@ to strategiePlanteur
       ]
      
     ]    
-    
   
   
 end
+;;;;;;;;;;;---------------------------------------------------------
+
+
+
+;;Le facteur malchance
 
 to facteur-malchance
    set argent argent - random (nb-adultes * malchance + (argent / 20 ))
@@ -750,6 +748,16 @@ to facteur-malchance
      set argent argent - random (nb-adultes * malchance + (argent / 10 ))
       ] 
 end
+
+
+
+
+;;-------------L'état bilan----------------------------
+;   Gères tous le schangements de stratégies des familles
+;   Est appelé a la fin de chaque années ( 30 ticks)
+;
+;
+
 
 to bilan
     
@@ -782,13 +790,15 @@ to bilan
    
 end
 
+
+
+;; 
 to go
   ;grass-grow
   ask patches [ evolution ]
   ask familles [run ctask]
   tick
 end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
@@ -1466,7 +1476,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.0.2
+NetLogo 5.0.4
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
